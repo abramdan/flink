@@ -19,6 +19,7 @@
 package org.apache.flink.ml.recommendation
 
 import org.apache.flink.api.scala._
+import org.apache.flink.core.fs.FileSystem
 import org.apache.flink.ml.util.FlinkTestBase
 import org.scalatest._
 
@@ -27,37 +28,80 @@ import scala.language.postfixOps
 object SGDMeasurement {
 
   def main(args: Array[String]): Unit = {
-    val parallelism = 2
 
-    import Recommendation._
+    def getRmse(iterations: Int, lambda: Int, numBlocks: Int, numFactors: Int, learningRate: Double,
+                seed: Long, trainDS: DataSet[(Int, Int, Double)], testDS: DataSet[(Int, Int, Double)]) = {
+
+      val dsgd = SGD()
+        .setIterations(iterations)
+        .setLambda(lambda)
+        .setBlocks(numBlocks)
+        .setNumFactors(numFactors)
+        .setLearningRate(learningRate)
+        .setSeed(seed)
+
+      dsgd.fit(trainDS)
+
+      val testWithoutRatings = testDS.map(i => (i._1, i._2))
+
+      val predictions = dsgd.predict(testWithoutRatings).collect()
+
+      val environment = trainDS.getExecutionEnvironment
+      val predDS = environment.fromCollection(predictions)
+
+      val rmse = testDS.join(predDS).where(0).equalTo(0)
+//        .map(i => (i._1._3, i._2._3))
+//        .map(i => (i._1 - i._2) * (i._1 - i._2))
+//        .map(i => (i, 1))
+//        .reduce((i, j) => (i._1 + i._1, i._2 + j._2))
+//        .map(i => math.sqrt(i._1 / i._2))
+
+/*      println("*****************************************************************")
+      rmse.print()
+      //testDS.print()
+      println("*****************************************************************")
+      //rmse.collect().iterator.next()
+      9999.999*/
+
+      rmse
+    }
+
+    val trainPath = "/home/dani/data/movielens_train.csv"
+    val testPath = "/home/dani/data/movielens_test.csv"
+    val predPath = "/home/dani/data/movielens_pred.csv"
 
     val env = ExecutionEnvironment.getExecutionEnvironment
 
-    val dsgd = SGD()
-      .setIterations(20)
-      .setLambda(0)
-      .setBlocks(3)
-      .setNumFactors(10)
-      .setLearningRate(0.001)
-      .setSeed(43L)
+    val trainDS: DataSet[(Int, Int, Double)] = env.readCsvFile[(Int, Int, Double)](trainPath)
+    val testDS = env.readCsvFile[(Int, Int, Double)](testPath).first(15)
+    val predDS = env.readCsvFile[(Int, Int, Double)](predPath).first(15)
 
-    val pathToTrainingFile = "/home/dani/data/movielens_train.csv"
-    // Read input data set from a csv file
-    val inputDS: DataSet[(Int, Int, Double)] = env.readCsvFile[(Int, Int, Double)](pathToTrainingFile)
+    //val testRmse = getRmse(20, 0, 4, 10, 0.01, 43L, trainDS, testDS)
 
-    dsgd.fit(inputDS)
+    //println(testRmse)
+    val joined = testDS.join(predDS).where(0, 1).equalTo(0, 1)
+      .map(i => (i._1._3, i._2._3))
+//      .map(i => ((i._1 - i._2) * (i._1 - i._2), 1))
+//      .map(i => (i, 1))
+//      .reduce((i, j) => (i._1 + i._1, i._2 + j._2))
+//      .map(i => math.sqrt(i._1 / i._2))
+
+    joined.writeAsCsv("/home/dani/data/tmp/joined.csv",
+      writeMode = FileSystem.WriteMode.OVERWRITE).setParallelism(1)
+//
+//    joined foreach(println(_))
+    joined.print()
 
 
-    val pathToData = "/home/dani/data/movielens_test.csv"
-    val testingDS = env.readCsvFile[(Int, Int)](pathToData).first(10)
+/*    val proba = env.fromCollection(List((2, 1, -1), (1, 5, -2), (8, 7, -3), (5, 1, -4), (2, 3, -5)))
+    val proba2 = env.fromCollection(List((2, 1, 1), (1, 5, 2), (8, 7, 3), (5, 1, 4), (2, 3, 5)))
 
-    val predictions = dsgd.predict(testingDS).collect()
+    proba.join(proba2).where(0, 1).equalTo(0, 1).print()
 
-    //  val userFacts = dsgd.factorsOption.get._1.collect
-    //  val itemFacts = dsgd.factorsOption.get._2.collect
-    predictions.foreach(println)
-    println("------------------")
 
+
+    proba.join(proba2).where(0, 1).equalTo(0, 1).writeAsCsv("/home/dani/data/tmp/joined.csv",
+      writeMode = FileSystem.WriteMode.OVERWRITE).setParallelism(1)*/
   }
 
 
