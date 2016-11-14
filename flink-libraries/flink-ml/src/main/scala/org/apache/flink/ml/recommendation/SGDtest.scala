@@ -30,11 +30,10 @@ object SGDtest {
     // set up the execution environment
     val env = ExecutionEnvironment.getExecutionEnvironment
 
-//    val pathToTrainingFile = "/home/dani/data/movielens_train.csv"
+    val pathToTrainingFile = "/home/dani/data/movielens70_train.csv"
     // Read input data set from a csv file
-//    val inputDS: DataSet[(Int, Int, Double)] =
-    // env.readCsvFile[(Int, Int, Double)](pathToTrainingFile)
-    val inputDS = env.fromCollection(data)
+    val inputDS: DataSet[(Int, Int, Double)] = env.readCsvFile[(Int, Int, Double)](pathToTrainingFile)
+    //val inputDS = env.fromCollection(data)
 
     val userIDs = inputDS.map(_._1).distinct()
     val itemIDs = inputDS.map(_._2).distinct()
