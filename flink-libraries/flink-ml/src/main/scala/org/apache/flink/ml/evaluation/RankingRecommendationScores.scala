@@ -45,10 +45,11 @@ class RankingRecommendationScores(val topK: Int) {
 
   def predictions(als: Predictor[SGD], users: DataSet[Int], items: DataSet[Int], exclude: DataSet[(Int, Int)]): DataSet[(Int, Int, Int)] = {
     val userItemPairs = getUserItemPairs(users, items, exclude)
+    val topKCopy = topK
     predictScores(als, userItemPairs)
       .groupBy(0)
       .sortGroup(2, Order.DESCENDING)
-      .reduceGroup( _.zip((1 to topK).toIterator) )
+      .reduceGroup( _.zip((1 to topKCopy).toIterator) )
       .flatMap( _.map { case ((u, i, pred), rank) => (u, i, rank) } )
   }
 
