@@ -19,12 +19,9 @@
 
 package org.apache.flink.ml.evaluation
 
-import org.apache.flink.api.common.operators.base.JoinOperatorBase.JoinHint
 import org.apache.flink.api.scala._
-import org.apache.flink.ml.common.{FlinkMLTools, ParameterMap}
-import org.apache.flink.ml.math.{BLAS, DenseVector}
-import org.apache.flink.ml.pipeline.{FitOperation, PredictDataSetOperation, Predictor}
-import org.apache.flink.ml.recommendation.ALS
+import org.apache.flink.ml.pipeline.Predictor
+import org.apache.flink.ml.recommendation.SGD
 import org.apache.flink.ml.util.FlinkTestBase
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -35,12 +32,12 @@ class RankingRecommendationScoresITSuite extends FlatSpec with Matchers with Fli
 
   it should "make ranking predictions correctly" in {
     val env = ExecutionEnvironment.getExecutionEnvironment
-    val als = new ALS()
+    val als = new SGD()
     val users = env.fromCollection(Seq(1,2))
     val items = env.fromCollection(Seq(1,2,3,4))
     val exclude = env.fromCollection(Seq((5,5)))
     val rankRecScores = new RankingRecommendationScores(3){
-      override def predictScores(als: Predictor[ALS], userItemPairs: DataSet[(Int, Int)]): DataSet[(Int, Int, Double)] = {
+      override def predictScores(als: Predictor[SGD], userItemPairs: DataSet[(Int, Int)]): DataSet[(Int, Int, Double)] = {
         env.fromCollection(Seq(
           (1,1,0.7),
           (1,2,0.9),
